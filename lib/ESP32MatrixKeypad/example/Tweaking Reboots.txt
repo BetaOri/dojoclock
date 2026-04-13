@@ -1,0 +1,100 @@
+What timing knobs can you turn to attack that tiny window?
+Do in order #1,2,3 at a time to the max value and test (F4 seemed to be the worst!)
+In the CPP file.
+
+You’ve already pushed scanIntervalMs up—that spaces out scans, but doesn’t change the shape of each transition. Now we care about microsecond‑scale timing inside the scan.
+scanIntervalMs in h file.
+Here are the knobs that matter:
+
+    1) Row settle time after driving LOW
+
+    In scanRaw() / scanTask(), you have something like:
+    cpp
+
+    digitalWrite(_rowPins[r], LOW);
+    delayMicroseconds(40);   // settle time
+
+    You can push this up to:
+    cpp
+
+    delayMicroseconds(80);   // or even 100
+
+    This gives the matrix more time to settle before you touch columns, and lets any transient fight die out.
+
+
+    2) Guard delay after returning a row to INPUT_PULLUP
+
+    After you do:
+    cpp
+
+    pinMode(_rowPins[r], INPUT_PULLUP);
+    delayMicroseconds(8); // guard time before next row
+
+    Try:
+    cpp
+
+    delayMicroseconds(20);   // or 30
+
+    This ensures the row is fully “quiet” before the next row starts its transition.
+
+
+    3)Delay between “all rows INPUT_PULLUP” and selecting a row
+
+    Right now:
+    cpp
+
+    for (int rr = 0; rr < _rows; rr++) {
+        pinMode(_rowPins[rr], INPUT_PULLUP);
+    }
+    delayMicroseconds(4);
+
+    pinMode(_rowPins[r], OUTPUT);
+    digitalWrite(_rowPins[r], HIGH);
+    delayMicroseconds(4);
+
+    digitalWrite(_rowPins[r], LOW);
+
+    You can stretch those 4 µs delays to 10–20 µs each. That slows the edge cascade and reduces simultaneous switching noise.
+
+
+    4) Column double‑sample spacing
+
+    You already do:
+    cpp
+
+    bool first = (digitalRead(_colPins[c]) == LOW);
+    delayMicroseconds(12);
+    bool second = (digitalRead(_colPins[c]) == LOW);
+
+    You can bump that to 20–30 µs. That gives more time for any transient induced by the row edge to die before you decide “this is a real keypress.”
+
+
+    5) (Advanced) Lower drive strength on row GPIOs
+
+    ESP32 lets you reduce drive strength per pin. In ESP‑IDF terms:
+    c
+
+    gpio_set_drive_capability(row_gpio, GPIO_DRIVE_CAP_0); // weakest
+
+    In Arduino, you’d need a small extern "C" block or a helper to call that. Lower drive strength = softer edges = less noise.
+
+
+The mental model to keep
+
+    You’re not fighting a big, obvious short anymore.
+
+    You’re fighting tiny, fast, timing‑dependent events that only show up when:
+
+        a specific key is pressed,
+
+        at the same time a row is transitioning,
+
+        on a board whose power/EN margins are a bit tight.
+
+So the right levers now are:
+
+    microsecond delays around transitions, and
+
+    edge softness (drive strength, series resistors).
+
+If you want, next time we can pick one of your current delay values and walk it up stepwise (e.g., 40 → 80 → 120 µs) and see if that corner key ever stops being able to reset the board—that’ll tell us a lot about whether this really is a transition‑window problem.
