@@ -1,5 +1,6 @@
 // DojoClockv1_30
 
+// NOTES: MUST "UPLOAD" css file (found in data folder) via littlefile system.
 // NOTES: Must use NVS Programmer after flash as upper non-standard portions of NVS survives reboots but not flash!!
 // NOTES: If random keypad reboot continue.. Adjust scanIntervalMs in ESP32MatrixKeypad.h higher until keypad is sluggish, that's your ceiling of how fast to "hammer" the keypad GPIO pins.
 //================================
