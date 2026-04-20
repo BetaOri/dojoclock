@@ -1,17 +1,13 @@
-// DojoClockv1_30
+// DojoClockv1_31
 
-// NOTES: MUST "UPLOAD" css file (found in data folder) via littlefile system.
-// NOTES: Must use NVS Programmer after flash as upper non-standard portions of NVS survives reboots but not flash!!
-// NOTES: If random keypad reboot continue.. Adjust scanIntervalMs in ESP32MatrixKeypad.h higher until keypad is sluggish, that's your ceiling of how fast to "hammer" the keypad GPIO pins.
+// NOTES: MUST "UPLOAD" css file (found in data folder) to firmware via littlefile system.
+// NOTES: morenvsflash.csv with "board_build.partitions = morenvsflash.csv" in platformio.ini allocates upper non-standard portions of NVS survives reboots but not flash!!
+// So... After Flash, preferences and programs will most likely need to be reentered.
 //================================
-// PROBLEM: (Bytes in loop all vary constrained 0-255) Floats an use realistic clamping? Error checking on SubmitPreference? example.. example: Only change if 1-255 etc..
-// PROBLEM: (Done?)Settings changeable in webserver not finished.
-// PROBLEM: CMDS and program call buttons not finished and tested.
-// PROBLEM: (No way around it) In Program... Meditate function (when there in NO REST) flashes the display RED! Looks broken to user. It's IN the "auto" program just before M is called!
+// PROBLEM: (FIXED!) Fight bells single, wait, double is confusing.
+// PROBLEM: (FIXED!): Use Light sensor results in black display
+// PROBLEM: (FIXED!): Dark mode can go as low as 3 (of 255) and appears off, when it's not.
 // PROBLEM: Add a cool random LED "wake up Effect" in the slowTimer myCycle routine??? WHY! No one's going to be there at sunrise! Out Darkness? "Lights on" maybe?
-// PROBLEM: Flesh out / test and add special effects!
-// PROBLEM: Optimize fastLEDRefresh()!
-// PROBLEM: useDigitMask is for the entire display! What about an effect you want all to show but have data in another section? (Also in the E CMD?)
 //================================
 
 // DECLARATIONS
@@ -45,6 +41,7 @@ struct PrefsData {
     uint8_t brightnessMax; // 255
     uint8_t brightnessMin; // 3 , 1 isn't really visible
     uint8_t brightnessStatic; // 50 , fastLED master: 1-255 8 bit, initial value used with NO light sensor
+    uint8_t brightnessMinDark; // 15, In dark mode this is the minimum value brightness.
     uint8_t blendSpeed; // 40 , LED blend value 0-255 40 = ~2 seconds.
     uint8_t bellStrikeTime; // 18 , ms of relay engaging, 14ms is the quietest
     uint8_t neglectTime; // 120 , Minutes to return to clock mode
@@ -141,14 +138,6 @@ uint8_t wifiTimeout = 10;
 uint8_t wifiTimeoutDefault = 10;
 bool wifiSuccess = 0;
 bool wifiClientStatus = 0;
-//const char* stationssid       = "W";
-//const char* stationpassword   = "P";
-//const char* ssid       = "Wifi2Nowhere";
-//const char* password   = "password";
-//const char* clientssid = "Hailing Frequency 2GHZ";
-//const char* clientpassword = "a12345678b";
-//const char* ssid       = "Warp-WSDP";
-//const char* password   = "lightspeed";
 bool wifiAPStatus = 0;
 IPAddress IP; // address of AP
 
@@ -855,8 +844,8 @@ void maskDigit(uint8_t address, uint8_t digit){ // Display Digit Address, Digit 
 void initializePreferences() {
   // Load 'prefs'
   eeprom.begin("prefs", false); // 'false' for read-write mode
-  prefsData.ssid = eeprom.getString("ssid", "Hailing Frequency 2GHZ");
-  prefsData.password = eeprom.getString("password", "a12345678b");
+  prefsData.ssid = eeprom.getString("ssid", "MyWiFissid");
+  prefsData.password = eeprom.getString("password", "MyPassword");
   prefsData.colorClock = eeprom.getUChar("colorClock", 13);
   prefsData.colorSeconds = eeprom.getUChar("colorSeconds", 4);
   prefsData.colorMonth = eeprom.getUChar("colorMonth", 8);
@@ -868,6 +857,7 @@ void initializePreferences() {
   prefsData.brightnessMax = eeprom.getUChar("brightnessMax", 255);
   prefsData.brightnessMin = eeprom.getUChar("brightnessMin", 3);
   prefsData.brightnessStatic = eeprom.getUChar("brightnessStatic", 50);
+  prefsData.brightnessMinDark = eeprom.getUChar("brightnessMinDark", 15);
   prefsData.blendSpeed = eeprom.getUChar("blendSpeed", 40);
   prefsData.bellStrikeTime = eeprom.getUChar("bellStrikeTime", 18);
   prefsData.neglectTime = eeprom.getUChar("neglectTime", 120);
@@ -925,28 +915,26 @@ void initializePreferences() {
   namespaces[10].byteElements[3] = 104;
   namespaces[10].charElements[4] = 'A';
   namespaces[10].byteElements[4] = 0;
-  namespaces[10].charElements[5] = 'H';
-  namespaces[10].byteElements[5] = 1;
-  namespaces[10].charElements[6] = 'N';
-  namespaces[10].byteElements[6] = 3;
-  namespaces[10].charElements[7] = 'H';
-  namespaces[10].byteElements[7] = 2;
-  namespaces[10].charElements[8] = 'a';
-  namespaces[10].byteElements[8] = 0;
-  namespaces[10].charElements[9] = 'H';
-  namespaces[10].byteElements[9] = 3;
-  namespaces[10].charElements[10] = 'N';
-  namespaces[10].byteElements[10] = 2;
-  namespaces[10].charElements[11] = 'U'; // LED U part source timerD1, color 01 (red)
-  namespaces[10].byteElements[11] = 101;
-  namespaces[10].charElements[12] = 'M';
+  namespaces[10].charElements[5] = 'N';
+  namespaces[10].byteElements[5] = 2;
+  namespaces[10].charElements[6] = 'H';
+  namespaces[10].byteElements[6] = 1;
+  namespaces[10].charElements[7] = 'a';
+  namespaces[10].byteElements[7] = 0;
+  namespaces[10].charElements[8] = 'H';
+  namespaces[10].byteElements[8] = 2;
+  namespaces[10].charElements[9] = 'N';
+  namespaces[10].byteElements[9] = 2;
+  namespaces[10].charElements[10] = 'U'; // LED U part source timerD1, color 01 (red)
+  namespaces[10].byteElements[10] = 101;
+  namespaces[10].charElements[11] = 'M';
+  namespaces[10].byteElements[11] = 0;
+  namespaces[10].charElements[12] = 'r';
   namespaces[10].byteElements[12] = 0;
-  namespaces[10].charElements[13] = 'r';
+  namespaces[10].charElements[13] = 'l';
   namespaces[10].byteElements[13] = 0;
-  namespaces[10].charElements[14] = 'l';
+  namespaces[10].charElements[14] = 'Q';
   namespaces[10].byteElements[14] = 0;
-  namespaces[10].charElements[15] = 'Q';
-  namespaces[10].byteElements[15] = 0;
 }
 void handleRoot() {
     String html = HTML_PARTA;
@@ -1036,6 +1024,7 @@ void handlePrefs() {
     html += "<p><b>0</b>, Y Intercept: + shifts Left, - right</p>";
     html += "<div class='field-item'><label for='brightnessMax'>Max LED Brightness:</label><input type='number' id='brightnessMax' name='brightnessMax' value='" + String(prefsData.brightnessMax) + "' min='0' max='255'></div>";
     html += "<div class='field-item'><label for='brightnessMin'>Min LED Brightness:</label><input type='number' id='brightnessMin' name='brightnessMin' value='" + String(prefsData.brightnessMin) + "' min='0' max='255'></div>";
+    html += "<div class='field-item'><label for='brightnessMin'>Min DARK Brightness:</label><input type='number' id='brightnessMinDark' name='brightnessMinDark' value='" + String(prefsData.brightnessMinDark) + "' min='0' max='255'></div>";
     html += "<p>Bright = 0 - 255</p>";
     html += "<div class='field-item'><label for='luxDeltaCovered'>Delta Light:</label><input type='number' id='luxDeltaCovered' name='luxDeltaCovered' value='" + String(prefsData.luxDeltaCovered) + "' min='0' max='100'></div>";
     html += "<p><b>50 </b>, &#37; sensor coverage = press</p>"; // &#37; = %
@@ -2316,7 +2305,8 @@ void handleSubmitPrefs() {
       { "luxDarkMode",   prefsData.luxDarkMode },
       { "luxDeltaCovered",   prefsData.luxDeltaCovered },
       { "brightnessMax",   prefsData.brightnessMax },
-      { "brightnessMin",   prefsData.brightnessMin },
+      { "brightnessMin",   prefsData.brightnessMin },  
+      { "brightnessMinDark",   prefsData.brightnessMinDark },  
       { "brightnessStatic",   prefsData.brightnessStatic },
       { "blendSpeed",   prefsData.blendSpeed },
       { "bellStrikeTime",   prefsData.bellStrikeTime },
@@ -4202,16 +4192,19 @@ void runEveryMyCycle() {
     if (ledDisplayState != 0 ){
       // ledRefresh(); // Updates numbers on LED display (not color)
       if (prefsData.useLightSensor){
-        if (deviceMode == 255){ // This math ensures dark mode will ALWAYS be able to go to brightness 3.
-        if (BRIGHTNESS > (brightnessTarget - prefsData.brightnessMin + 3)) { BRIGHTNESS = --BRIGHTNESS ;}
-        if (BRIGHTNESS < (brightnessTarget - prefsData.brightnessMin + 3)) { BRIGHTNESS = ++BRIGHTNESS ;}
+        if (deviceMode == 255){ // This math ensures dark mode will ALWAYS be able to go to brightness prefsData.brightnessMinDark.
+        if (BRIGHTNESS > (brightnessTarget - prefsData.brightnessMin + prefsData.brightnessMinDark)) { BRIGHTNESS = --BRIGHTNESS ;}
+        if (BRIGHTNESS < (brightnessTarget - prefsData.brightnessMin + prefsData.brightnessMinDark)) { BRIGHTNESS = ++BRIGHTNESS ;}
         }
         else { // Normal all modes LED brightness adjustments
         if (BRIGHTNESS > brightnessTarget) { BRIGHTNESS = --BRIGHTNESS ;}
         if (BRIGHTNESS < brightnessTarget) { BRIGHTNESS = ++BRIGHTNESS ;}
-        }  
-        FastLED.setBrightness(BRIGHTNESS);
+        }
+      }    
+      if (prefsData.useLightSensor == 0){ 
+        BRIGHTNESS = prefsData.brightnessStatic; // Bypass all dimming using light sensor and set to min bright
       }
+      FastLED.setBrightness(BRIGHTNESS);
     }
     //lcdRefresh();
     cycleFastTimer.set(100);
@@ -4579,4 +4572,13 @@ PROBLEM: (fixed?) LCD Time looks broken (slow, inconsistent) needs faster refres
 PROBLEM: (fixed?) IF Program has no Q at end! (BAD!) Add a failsafe CMD counter <=30 ? 
 PROBLEM: (fixed?) If Expiremental handleprefs num type and checkboxes works, convert ALL!
 Problem: (fixed?) If a Display source is set to t timer but commited to a different one in the program... That timer's .timer is never run to update it! Should this be run in the refresh LED if source is set to that timer?]
+NOTES: If random keypad reboot continue.. Adjust scanIntervalMs in ESP32MatrixKeypad.h higher until keypad is sluggish, that's your ceiling of how fast to "hammer" the keypad GPIO pins.
+PROBLEM: (Bytes in loop all vary constrained 0-255) Floats an use realistic clamping? Error checking on SubmitPreference? example.. example: Only change if 1-255 etc..
+PROBLEM: (Done?)Settings changeable in webserver not finished.
+PROBLEM: CMDS and program call buttons not finished and tested.
+PROBLEM: (No way around it) In Program... Meditate function (when there in NO REST) flashes the display RED! Looks broken to user. It's IN the "auto" program just before M is called!
+PROBLEM: Flesh out / test and add special effects!
+PROBLEM: Optimize fastLEDRefresh()!
+PROBLEM: useDigitMask is for the entire display! What about an effect you want all to show but have data in another section? (Also in the E CMD?)
+
 */
