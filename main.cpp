@@ -1,12 +1,11 @@
-// DojoClockv1_31
+// DojoClockv1_32
 
 // NOTES: MUST "UPLOAD" css file (found in data folder) to firmware via littlefile system.
 // NOTES: morenvsflash.csv with "board_build.partitions = morenvsflash.csv" in platformio.ini allocates upper non-standard portions of NVS survives reboots but not flash!!
 // So... After Flash, preferences and programs will most likely need to be reentered.
 //================================
-// PROBLEM: (FIXED!) Fight bells single, wait, double is confusing.
-// PROBLEM: (FIXED!): Use Light sensor results in black display
-// PROBLEM: (FIXED!): Dark mode can go as low as 3 (of 255) and appears off, when it's not.
+
+// PROBLEM (fixed?): Preferences do not save or are garbage during save. After power loss, prefs are messed up.
 // PROBLEM: Add a cool random LED "wake up Effect" in the slowTimer myCycle routine??? WHY! No one's going to be there at sunrise! Out Darkness? "Lights on" maybe?
 //================================
 
@@ -846,30 +845,37 @@ void initializePreferences() {
   eeprom.begin("prefs", false); // 'false' for read-write mode
   prefsData.ssid = eeprom.getString("ssid", "MyWiFissid");
   prefsData.password = eeprom.getString("password", "MyPassword");
-  prefsData.colorClock = eeprom.getUChar("colorClock", 13);
+  prefsData.colorClock = eeprom.getUChar("colorClock", 14);
   prefsData.colorSeconds = eeprom.getUChar("colorSeconds", 4);
   prefsData.colorMonth = eeprom.getUChar("colorMonth", 8);
   prefsData.colorDate = eeprom.getUChar("colorDate", 3);
-  prefsData.taskHour = eeprom.getUChar("taskHour", 2); // 2 am
-  prefsData.taskMinute = eeprom.getUChar("taskMinute", 0);
+  prefsData.taskHour = 2;
+  //prefsData.taskHour = eeprom.getUChar("taskHour", 2); // 2 am
+  prefsData.taskMinute = 0;
+  // prefsData.taskMinute = eeprom.getUChar("taskMinute", 0);
   prefsData.luxDeltaCovered = eeprom.getUChar("luxDeltaCovered", 50);
   prefsData.brightnessLateral = eeprom.getUChar("brightnessLateral", 0);
-  prefsData.brightnessMax = eeprom.getUChar("brightnessMax", 255);
-  prefsData.brightnessMin = eeprom.getUChar("brightnessMin", 3);
+  prefsData.brightnessMax = 255;
+  // prefsData.brightnessMax = eeprom.getUChar("brightnessMax", 255);
+  prefsData.brightnessMin = eeprom.getUChar("brightnessMin", 35);
   prefsData.brightnessStatic = eeprom.getUChar("brightnessStatic", 50);
   prefsData.brightnessMinDark = eeprom.getUChar("brightnessMinDark", 15);
-  prefsData.blendSpeed = eeprom.getUChar("blendSpeed", 40);
+  prefsData.blendSpeed = 40;
+  //prefsData.blendSpeed = eeprom.getUChar("blendSpeed", 40);
   prefsData.bellStrikeTime = eeprom.getUChar("bellStrikeTime", 18);
   prefsData.neglectTime = eeprom.getUChar("neglectTime", 120);
-  prefsData.lcdBacklightTime = eeprom.getUChar("lcdBacklightTime", 120); //120
+  prefsData.lcdBacklightTime = 120;
+  //prefsData.lcdBacklightTime = eeprom.getUChar("lcdBacklightTime", 120); //120
   prefsData.luxDarkMode = eeprom.getUChar("luxDarkMode", 4); //4
-  prefsData.nightDisplayOffTime = eeprom.getUChar("nightDisplayOffTime", 22); //22
-  prefsData.useBeeper = eeprom.getBool("useBeeper", 0);
+  prefsData.nightDisplayOffTime = 23;
+  //prefsData.nightDisplayOffTime = eeprom.getUChar("nightDisplayOffTime", 22); //22
+  prefsData.useBeeper = eeprom.getBool("useBeeper", 1);
   prefsData.useBell = eeprom.getBool("useBell", 1);
   prefsData.nightDisplayOff = eeprom.getBool("nightDisplayOff", 1);
   prefsData.useLightSensor = eeprom.getBool("useLightSensor", 1);
-  prefsData.brightnessSlope = eeprom.getFloat("brightnessSlope", 0.25);
-  prefsData.luxStabilityVariance = eeprom.getFloat("luxStabilityVariance", 1.75);
+  prefsData.brightnessSlope = eeprom.getFloat("brightnessSlope", 1.72);
+  prefsData.luxStabilityVariance = 1.75;
+  //prefsData.luxStabilityVariance = eeprom.getFloat("luxStabilityVariance", 1.75);
   //------------------------------------------------
   timeZone = eeprom.getChar("timeZone", 'C');
   useDST = eeprom.getBool("useDST", true);
@@ -997,41 +1003,41 @@ void handlePrefs() {
     html += "<p><b>--- DISPLAY BEHAVIOR ---</b></p>";
     html += "<div class='field-item'><label for='brightnessStatic'>Master Brightness:</label><input type='number' id='brightnessStatic' name='brightnessStatic' value='" + String(prefsData.brightnessStatic) + "' min='0' max='255'></div>";
     html += "<p>Constant value, no sensor</p>";
-    html += "<div class='field-item'><label for='blendSpeed'>Blend Speed:</label><input type='number' id='blendSpeed' name='blendSpeed' value='" + String(prefsData.blendSpeed) + "' min='0' max='255'></div>";
-    html += "<p><b>40</b>, = 2 seconds for effects</p>";
+    //html += "<div class='field-item'><label for='blendSpeed'>Blend Speed:</label><input type='number' id='blendSpeed' name='blendSpeed' value='" + String(prefsData.blendSpeed) + "' min='0' max='255'></div>";
+    //html += "<p><b>40</b>, = 2 seconds for effects</p>";
     
     html += "<p>--- OTHER ---</p>";
     html += "<div class='field-item'><label for='useBeeper'>Use Key Beeps:</label><input type='checkbox' id='useBeeper' name='useBeeper' " + String(prefsData.useBeeper ? "checked" : "") + "></div>";
     html += "<div class='field-item'><label for='useBell'>Use Bell:</label><input type='checkbox' id='useBell' name='useBell' " + String(prefsData.useBell ? "checked" : "") + "></div>";
     html += "<div class='field-item'><label for='bellStrikeTime'>Bell Strike Time:</label><input type='number' id='bellStrikeTime' name='bellStrikeTime' value='" + String(prefsData.bellStrikeTime) + "' min='0' max='255'></div>";
     html += "<p><b>18</b>, ms relay powered</p>";
-    html += "<div class='field-item'><label for='lcdBacklightTime'>LCD Backlight Time:</label><input type='number' id='lcdBacklightTime' name='lcdBacklightTime' value='" + String(prefsData.lcdBacklightTime) + "' min='0' max='255'></div>";
-    html += "<p><b>120</b>, sec to off</p>";
+    //html += "<div class='field-item'><label for='lcdBacklightTime'>LCD Backlight Time:</label><input type='number' id='lcdBacklightTime' name='lcdBacklightTime' value='" + String(prefsData.lcdBacklightTime) + "' min='0' max='255'></div>";
+    //html += "<p><b>120</b>, sec to off</p>";
     html += "<div class='field-item'><label for='neglectTime'>Neglect Timer:</label><input type='number' id='neglectTime' name='neglectTime' value='" + String(prefsData.neglectTime) + "' min='0' max='255'></div>";
     html += "<p><b>120</b>, min back to clock</p>";
-    html += "<p>--- WEBSYNC TIME (2am) ---</p>";
-    html += "<div class='field-item'><label for='taskHour'>Update Hour:</label><input type='number' id='taskHour' name='taskHour' value='" + String(prefsData.taskHour) + "' min='0' max='24'></div>";
-    html += "<div class='field-item'><label for='taskMinute'>Update Minute:</label><input type='number' id='taskMinute' name='taskMinute' value='" + String(prefsData.taskMinute) + "' min='0' max='59'></div>";
+    //html += "<p>--- WEBSYNC TIME (2am) ---</p>";
+    //html += "<div class='field-item'><label for='taskHour'>Update Hour:</label><input type='number' id='taskHour' name='taskHour' value='" + String(prefsData.taskHour) + "' min='0' max='24'></div>";
+    //html += "<div class='field-item'><label for='taskMinute'>Update Minute:</label><input type='number' id='taskMinute' name='taskMinute' value='" + String(prefsData.taskMinute) + "' min='0' max='59'></div>";
     
     html += "<p>--- LIGHT SENSOR USAGE ---</p>";
     html += "<div class='field-item'><label for='useLightSensor'>Use Light Sensor:</label><input type='checkbox' id='useLightSensor' name='useLightSensor' " + String(prefsData.useLightSensor ? "checked" : "") + "></div>";
     html += "<p> All Below Settings Require Sensor</p>";
     html += "<div class='field-item'><label for='nightDisplayOff'>Display Off At Night:</label><input type='checkbox' id='nightDisplayOff' name='nightDisplayOff' " + String(prefsData.nightDisplayOff ? "checked" : "") + "></div>";
-    html += "<div class='field-item'><label for='nightDisplayOffTime'>Display Off Hour (22):</label><input type='number' id='nightDisplayOffTime' name='nightDisplayOffTime' value='" + String(prefsData.nightDisplayOffTime) + "' min='0' max='23'></div>";  
+    //html += "<div class='field-item'><label for='nightDisplayOffTime'>Display Off Hour (23):</label><input type='number' id='nightDisplayOffTime' name='nightDisplayOffTime' value='" + String(prefsData.nightDisplayOffTime) + "' min='0' max='23'></div>";  
     html += "<div class='field-item'><label for='brightnessSlope'>Brightness Slope:</label><input type='number' id='brightnessSlope' name='brightnessSlope' step='any' value='" + String(prefsData.brightnessSlope) + "'></div>";
-    html += "<p><b>0.25</b>, Large: Steeper, Small: Flatter</p>";
+    html += "<p><b>1.72</b>, Large: Steeper, Small: Flatter</p>";
     html += "<div class='field-item'><label for='brightnessLateral'>Brightness L R:</label><input type='number' id='brightnessLateral' name='brightnessLateral' value='" + String(prefsData.brightnessLateral) + "' min='-128' max='127'></div>";
     html += "<p><b>0</b>, Y Intercept: + shifts Left, - right</p>";
-    html += "<div class='field-item'><label for='brightnessMax'>Max LED Brightness:</label><input type='number' id='brightnessMax' name='brightnessMax' value='" + String(prefsData.brightnessMax) + "' min='0' max='255'></div>";
-    html += "<div class='field-item'><label for='brightnessMin'>Min LED Brightness:</label><input type='number' id='brightnessMin' name='brightnessMin' value='" + String(prefsData.brightnessMin) + "' min='0' max='255'></div>";
-    html += "<div class='field-item'><label for='brightnessMin'>Min DARK Brightness:</label><input type='number' id='brightnessMinDark' name='brightnessMinDark' value='" + String(prefsData.brightnessMinDark) + "' min='0' max='255'></div>";
+    //html += "<div class='field-item'><label for='brightnessMax'>Max LED Brightness(255):</label><input type='number' id='brightnessMax' name='brightnessMax' value='" + String(prefsData.brightnessMax) + "' min='0' max='255'></div>";
+    html += "<div class='field-item'><label for='brightnessMin'>Min LED Brightness(35):</label><input type='number' id='brightnessMin' name='brightnessMin' value='" + String(prefsData.brightnessMin) + "' min='0' max='255'></div>";
+    html += "<div class='field-item'><label for='brightnessMinDark'>Min DARK Brightness(15):</label><input type='number' id='brightnessMinDark' name='brightnessMinDark' value='" + String(prefsData.brightnessMinDark) + "' min='0' max='255'></div>";
     html += "<p>Bright = 0 - 255</p>";
     html += "<div class='field-item'><label for='luxDeltaCovered'>Delta Light:</label><input type='number' id='luxDeltaCovered' name='luxDeltaCovered' value='" + String(prefsData.luxDeltaCovered) + "' min='0' max='100'></div>";
     html += "<p><b>50 </b>, &#37; sensor coverage = press</p>"; // &#37; = %
     html += "<div class='field-item'><label for='luxDarkMode'>Dark Mode:</label><input type='number' id='luxDarkMode' name='luxDarkMode' value='" + String(prefsData.luxDarkMode) + "' min='0' max='255'></div>";
     html += "<p><b>4</b>, Sensor Value for Dark</p>";
-    html += "<div class='field-item'><label for='luxStabilityVariance'>Stability Variance:</label><input type='number' id='luxStabilityVariance' name='luxStabilityVariance' step='any' value='" + String(prefsData.luxStabilityVariance) + "'></div>";
-    html += "<p><b>1.75</b>, &#37; dif sample for light stable.</p>"; // &#37; = %
+    //html += "<div class='field-item'><label for='luxStabilityVariance'>Stability Variance:</label><input type='number' id='luxStabilityVariance' name='luxStabilityVariance' step='any' value='" + String(prefsData.luxStabilityVariance) + "'></div>";
+    //html += "<p><b>1.75</b>, &#37; dif sample for light stable.</p>"; // &#37; = %
     
     html += "<input type='submit' value='Save Values'>";
     html += "</form>";
@@ -2199,133 +2205,202 @@ void handleSubmitPrefs() {
     html += "DojoClock-Submitted";
     html += HTML_PARTB;
     html += "Submision Results</h1>";
-    eeprom.begin("prefs", false);
+
+    if (!eeprom.begin("prefs", false)) {
+        html += "<p><b>ERROR:</b> Failed to open prefs namespace.</p>";
+        html += "<h2 class='home-link'><a href='/'>Back to Home</a></h2>";
+        html += "</div>";
+        html += HTML_FOOTER;
+        server.send(500, "text/html", html);
+        return;
+    }
+
     bool changed = false;
     String tempString;
-    // Check and update SSID
+
+    auto saveStringIfChanged = [&](const char* key, String &field, const String &newVal, const char* label) {
+        if (newVal != field) {
+            size_t written = eeprom.putString(key, newVal);
+            if (written > 0) {
+                field = newVal;
+                html += "<p>";
+                html += label;
+                html += " updated.</p>";
+                changed = true;
+            } else {
+                Serial.printf("NVS ERROR: putString('%s') failed\n", key);
+                html += "<p><b>ERROR:</b> Failed to save ";
+                html += label;
+                html += ".</p>";
+            }
+        }
+    };
+
+    auto saveBoolIfChanged = [&](const char* key, bool &field, bool newVal, const char* label) {
+        if (newVal != field) {
+            bool ok = eeprom.putBool(key, newVal);
+            if (ok) {
+                field = newVal;
+                html += "<p>";
+                html += label;
+                html += " updated.</p>";
+                changed = true;
+            } else {
+                Serial.printf("NVS ERROR: putBool('%s') failed\n", key);
+                html += "<p><b>ERROR:</b> Failed to save ";
+                html += label;
+                html += ".</p>";
+            }
+        }
+    };
+
+    auto saveFloatIfChanged = [&](const char* key, float &field, float newVal, const char* label) {
+        if (newVal != field) {
+            bool ok = eeprom.putFloat(key, newVal);
+            if (ok) {
+                field = newVal;
+                html += "<p>";
+                html += label;
+                html += " updated.</p>";
+                changed = true;
+            } else {
+                Serial.printf("NVS ERROR: putFloat('%s') failed\n", key);
+                html += "<p><b>ERROR:</b> Failed to save ";
+                html += label;
+                html += ".</p>";
+            }
+        }
+    };
+
+    auto saveUCharIfChanged = [&](const char* key, uint8_t &field, uint8_t newVal, const char* label) {
+        if (newVal != field) {
+            bool ok = eeprom.putUChar(key, newVal);
+            if (ok) {
+                field = newVal;
+                html += "<p>";
+                html += label;
+                html += " updated.</p>";
+                changed = true;
+            } else {
+                Serial.printf("NVS ERROR: putUChar('%s') failed\n", key);
+                html += "<p><b>ERROR:</b> Failed to save ";
+                html += label;
+                html += ".</p>";
+            }
+        }
+    };
+
+    auto saveInt8IfChanged = [&](const char* key, int8_t &field, int8_t newVal, const char* label) {
+        if (newVal != field) {
+            bool ok = eeprom.putChar(key, newVal);
+            if (ok) {
+                field = newVal;
+                html += "<p>";
+                html += label;
+                html += " updated.</p>";
+                changed = true;
+            } else {
+                Serial.printf("NVS ERROR: putChar('%s') failed\n", key);
+                html += "<p><b>ERROR:</b> Failed to save ";
+                html += label;
+                html += ".</p>";
+            }
+        }
+    };
+
+    // ----- Strings -----
     if (server.hasArg("ssid")) {
         tempString = server.arg("ssid");
-        if (tempString != prefsData.ssid) {
-            eeprom.putString("ssid", tempString);
-            prefsData.ssid = tempString;
-            html += "<p>SSID updated to: " + tempString + "</p>";
-            changed = true;
-        }
+        saveStringIfChanged("ssid", prefsData.ssid, tempString, "SSID");
     }
-    // Check and update Password
+
     if (server.hasArg("password")) {
         tempString = server.arg("password");
+        // Don't echo password
         if (tempString != prefsData.password) {
-            eeprom.putString("password", tempString);
-            prefsData.password = tempString;
-            html += "<p>Password updated.</p>"; // For security, don't echo password
-            changed = true;
+            size_t written = eeprom.putString("password", tempString);
+            if (written > 0) {
+                prefsData.password = tempString;
+                html += "<p>Password updated.</p>";
+                changed = true;
+            } else {
+                Serial.println("NVS ERROR: putString('password') failed");
+                html += "<p><b>ERROR:</b> Failed to save Password.</p>";
+            }
         }
     }
 
-    // bool useBeeper NEW CHECKBOX VERSION
-    bool tempBool = server.hasArg("useBeeper");
-    if (tempBool != prefsData.useBeeper) {
-      eeprom.putBool("useBeeper", tempBool);
-      prefsData.useBeeper = tempBool;
-      html += "<p>useBeeper updated.</p>";
-      changed = true;
-    }
+    // ----- Bools (checkbox semantics preserved) -----
+    bool tempBool;
 
-    // bool uselightSensor NEW CHECKBOX VERSION
+    tempBool = server.hasArg("useBeeper");
+    saveBoolIfChanged("useBeeper", prefsData.useBeeper, tempBool, "useBeeper");
+
     tempBool = server.hasArg("useLightSensor");
-    if (tempBool != prefsData.useLightSensor) {
-      eeprom.putBool("useLightSensor", tempBool);
-      prefsData.useLightSensor = tempBool;
-      html += "<p>useLightSensor updated.</p>";
-      changed = true;
-    }
+    saveBoolIfChanged("useLightSensor", prefsData.useLightSensor, tempBool, "useLightSensor");
 
-// bool useBell
     tempBool = server.hasArg("useBell");
-    if (tempBool != prefsData.useBell) {
-      eeprom.putBool("useBell", tempBool);
-      prefsData.useBell = tempBool;
-      html += "<p>useBell updated.</p>";
-      changed = true;
-    }
+    saveBoolIfChanged("useBell", prefsData.useBell, tempBool, "useBell");
 
-// bool nightDisplayOff
     tempBool = server.hasArg("nightDisplayOff");
-    if (tempBool != prefsData.nightDisplayOff) {
-      eeprom.putBool("nightDisplayOff", tempBool);
-      prefsData.nightDisplayOff = tempBool;
-      html += "<p>nightDisplayOff updated.</p>";
-      changed = true;
-    }
+    saveBoolIfChanged("nightDisplayOff", prefsData.nightDisplayOff, tempBool, "nightDisplayOff");
 
-// brightnessSlope
+    // ----- Floats -----
     if (server.hasArg("brightnessSlope")) {
-         float tempFloat = server.arg("brightnessSlope").toFloat();
-        if (tempFloat != prefsData.brightnessSlope && tempFloat >= 0) {
-            eeprom.putFloat("brightnessSlope", tempFloat);
-            prefsData.brightnessSlope = tempFloat;
-            html += "<p>brightnessSlope updated.</p>";
-            changed = true;
+        float tempFloat = server.arg("brightnessSlope").toFloat();
+        if (tempFloat >= 0.0f) {
+            saveFloatIfChanged("brightnessSlope", prefsData.brightnessSlope, tempFloat, "brightnessSlope");
         }
-    }
-// luxStabilityVariance
-    if (server.hasArg("luxStabilityVariance")) {
-         float tempFloat = server.arg("luxStabilityVariance").toFloat();
-        if (tempFloat != prefsData.luxStabilityVariance && tempFloat >= 0 && tempFloat <= 100) {
-            eeprom.putFloat("luxStabilityVariance", tempFloat);
-            prefsData.luxStabilityVariance = tempFloat;
-            html += "<p>luxStabilityVariance updated.</p>";
-            changed = true;
-        }
-    }
-// brightnessLateral is int8_t to be -128 to 127
-    if (server.hasArg("brightnessLateral")) {
-      int8_t tempByte = constrain(server.arg("brightnessLateral").toInt(), -128, 127);
-      if (tempByte != prefsData.brightnessLateral) {
-        eeprom.putChar("brightnessLateral", tempByte);
-        prefsData.brightnessLateral = tempByte;
-        html += "<p>brightnessLateral updated.</p>";
-        changed = true;
-      }
     }
 
-// ===== BYTE Preferences stored in NVR ================================
-    struct Item {
-      const char* key;
-      uint8_t& field;
-    };
-    Item UCharItems[] = {
-      { "colorClock",   prefsData.colorClock },
-      { "colorSeconds", prefsData.colorSeconds },
-      { "colorMonth",   prefsData.colorMonth },
-      { "colorDate",    prefsData.colorDate },
-      { "taskHour",   prefsData.taskHour },
-      { "taskMinute",   prefsData.taskMinute },
-      { "luxDarkMode",   prefsData.luxDarkMode },
-      { "luxDeltaCovered",   prefsData.luxDeltaCovered },
-      { "brightnessMax",   prefsData.brightnessMax },
-      { "brightnessMin",   prefsData.brightnessMin },  
-      { "brightnessMinDark",   prefsData.brightnessMinDark },  
-      { "brightnessStatic",   prefsData.brightnessStatic },
-      { "blendSpeed",   prefsData.blendSpeed },
-      { "bellStrikeTime",   prefsData.bellStrikeTime },
-      { "neglectTime",   prefsData.neglectTime },
-      { "lcdBacklightTime", prefsData.lcdBacklightTime },
-      { "nightDisplayOffTime", prefsData.nightDisplayOffTime }
-    };   
-    for (auto &UCharItems : UCharItems) { // for every item in list
-      if (server.hasArg(UCharItems.key)) {
-        uint8_t tempByte = constrain(server.arg(UCharItems.key).toInt(), 0, 255); // Constrain value from 0-255! Larger will be 255, Negative and text will be 0.
-        if (tempByte != UCharItems.field) {
-          eeprom.putUChar(UCharItems.key, tempByte);
-          UCharItems.field = tempByte;
-          html += "<p>"; html += UCharItems.key; html += " updated.</p>";
-          changed = true;
-        }
-      }
+    //  if (server.hasArg("luxStabilityVariance")) {
+    //      float tempFloat = server.arg("luxStabilityVariance").toFloat();
+    //      if (tempFloat >= 0.0f && tempFloat <= 100.0f) {
+    //          saveFloatIfChanged("luxStabilityVariance", prefsData.luxStabilityVariance, tempFloat, "luxStabilityVariance");
+    //      }
+    //  }
+
+    // ----- int8_t -----
+    if (server.hasArg("brightnessLateral")) {
+        int8_t tempByte = (int8_t)constrain(server.arg("brightnessLateral").toInt(), -128, 127);
+        saveInt8IfChanged("brightnessLateral", prefsData.brightnessLateral, tempByte, "brightnessLateral");
     }
-    eeprom.end();
+
+    // ----- uint8_t group (fixed loop) -----
+    struct Item {
+        const char* key;
+        uint8_t& field;
+        const char* label;
+    };
+
+    Item ucharItems[] = {
+        { "colorClock",         prefsData.colorClock,         "colorClock" },
+        { "colorSeconds",       prefsData.colorSeconds,       "colorSeconds" },
+        { "colorMonth",         prefsData.colorMonth,         "colorMonth" },
+        { "colorDate",          prefsData.colorDate,          "colorDate" },
+        //{ "taskHour",           prefsData.taskHour,           "taskHour" },
+        //{ "taskMinute",         prefsData.taskMinute,         "taskMinute" },
+        { "luxDarkMode",        prefsData.luxDarkMode,        "luxDarkMode" },
+        { "luxDeltaCovered",    prefsData.luxDeltaCovered,    "luxDeltaCovered" },
+        //{ "brightnessMax",      prefsData.brightnessMax,      "brightnessMax" },
+        { "brightnessMin",      prefsData.brightnessMin,      "brightnessMin" },
+        { "brightnessMinDark",  prefsData.brightnessMinDark,  "brightnessMinDark" },
+        { "brightnessStatic",   prefsData.brightnessStatic,   "brightnessStatic" },
+        //{ "blendSpeed",         prefsData.blendSpeed,         "blendSpeed" },
+        { "bellStrikeTime",     prefsData.bellStrikeTime,     "bellStrikeTime" },
+        { "neglectTime",        prefsData.neglectTime,        "neglectTime" }
+        //{ "lcdBacklightTime",   prefsData.lcdBacklightTime,   "lcdBacklightTime" },
+        //{ "nightDisplayOffTime",prefsData.nightDisplayOffTime,"nightDisplayOffTime" }
+    };
+
+    for (auto &item : ucharItems) {
+        if (server.hasArg(item.key)) {
+            uint8_t tempByte = (uint8_t)constrain(server.arg(item.key).toInt(), 0, 255);
+            saveUCharIfChanged(item.key, item.field, tempByte, item.label);
+        }
+    }
+
+    eeprom.end();  // commits changes
 
     if (!changed) {
         html += "<p>No changes detected for preferences.</p>";
@@ -2335,7 +2410,8 @@ void handleSubmitPrefs() {
     html += "</div>";
     html += HTML_FOOTER;
     server.send(200, "text/html", html);
-    ledSetup();
+
+    ledSetup();  // re-apply updated prefs
 }
 void wifiClientOff(){
   WiFi.disconnect(true);
@@ -4303,6 +4379,15 @@ void keyPressHandler(){
 //=========================================================================
 void setup() {
   //Serial.begin(115200);
+
+   // TEMPORARY: clear prefs namespace once
+    // Preferences p;
+    // p.begin("prefs", false);
+    // p.clear();
+    // p.end();
+
+    // ... rest of setup ...
+
   Wire.begin(SDApin, SCLpin); // I2C comms bus
   lcd.backlight();
   terminal.begin();
@@ -4580,5 +4665,8 @@ PROBLEM: (No way around it) In Program... Meditate function (when there in NO RE
 PROBLEM: Flesh out / test and add special effects!
 PROBLEM: Optimize fastLEDRefresh()!
 PROBLEM: useDigitMask is for the entire display! What about an effect you want all to show but have data in another section? (Also in the E CMD?)
+PROBLEM: (FIXED!) Fight bells single, wait, double is confusing.
+PROBLEM: (FIXED!): Use Light sensor results in black display
+PROBLEM: (FIXED!): Dark mode can go as low as 3 (of 255) and appears off, when it's not.
 
 */
